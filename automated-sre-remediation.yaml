@@ -112,8 +112,35 @@ Resources:
       Runtime: python3.11
       Timeout: 10
       Code:
-        ZipFile: "PLACEHOLDER"
+        ZipFile: |
+          import boto3
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):
+              # Extract Security Group ID from the EventBridge event
+              try:
+                  group_id = event['detail']['requestParameters']['groupId']
+                  ip_permissions = event['detail']['requestParameters']['ipPermissions']['items']
                   
+                  for item in ip_permissions:
+                      if item.get('fromPort') == 22 or item.get('toPort') == 22:
+                          logger.info(f"Detected port 22 opening on {group_id}. Remediating...")
+                          
+                          ec2.revoke_security_group_ingress(
+                              GroupId=group_id,
+                              IpPermissions=[item]
+                          )
+                          logger.info(f"Successfully closed port 22 on {group_id}")
+                          
+                  return {"status": "success", "remediated_group": group_id}
+              except Exception as e:
+                  logger.error(f"Error during remediation: {str(e)}")
+                  return {"status": "error", "message": str(e)}
+                             
   # 5. EventBridge Rule to Trigger Lambda on Security Group Changes
   SecurityGroupChangeRule:
     Type: AWS::Events::Rule
