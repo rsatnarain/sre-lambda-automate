@@ -12,6 +12,9 @@ name: Deploy SRE Automated Remediation
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   validate-and-test:
@@ -23,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: 3.11
 
       # 1. Check for syntax errors (Linting)
       - name: Lint with flake8
