@@ -1,0 +1,39 @@
+# Name: cleanup-cache.yaml
+# Description: GitHub Actions workflow to clean up branch-specific caches when a pull request is closed.
+# When it's triggered: On pull request closure
+# What it does: Removes cached data specific to the branch that was merged/closed, helping to free up storage and maintain a clean cache state for future builds.
+# Note: This workflow uses the GitHub CLI to manage caches, so it requires the GITHUB_TOKEN secret to be available in the repository.
+# Author: Rob
+# Created: 2026-04-13
+# Updated By     Date         Version    Description
+# Rob            2026-04-23   1.0        Initial creation of the GitHub Actions workflow for cleaning up branch-specific caches on pull request closure.
+# 
+
+name: Cleanup Branch Cache
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cleanup Cache for Closed PR
+        # Using the official GitHub CLI to find and delete the cache
+        run: |
+          gh extension install github/gh-actions-cache
+          
+          REPO=${{ github.repository }}
+          BRANCH=${{ github.event.pull_request.head.ref }}
+
+          echo "Fetching caches for branch: $BRANCH"
+          
+          # List and delete all caches associated with the closed branch
+          caches=$(gh actions-cache list -R $REPO -B $BRANCH --confirm | cut -f 1 || true)
+          
+          for cacheKey in $caches; do
+            echo "Deleting cache: $cacheKey"
+            gh actions-cache delete $cacheKey -R $REPO -B $BRANCH --confirm
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

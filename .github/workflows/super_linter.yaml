@@ -1,0 +1,93 @@
+# Name: CloudFormation Test and Deploy Workflow with Super Linter
+# Description: GitHub Actions workflow to test and deploy CloudFormation templates with Super Linter for multi-language support and Slack notifications.
+# Author: Rob
+# Created: 2026-04-13
+# Updated By     Date         Version    Description
+# Rob            2026-04-23   2.0        Initial creation of the GitHub Actions workflow for testing and deploying CloudFormation templates with Super Linter and Slack notifications.
+# 
+
+name: CloudFormation Test and Deploy
+run-name: ${{ github.actor }} is running CloudFormation Test and Deploy ▄︻デ══━一💥 </>
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-deploy:
+    name: Test and Deploy CFN
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Cache Docker images
+        uses: ScribeMD/docker-cache@0.5.0
+        with:
+          key: docker-super-linter-v8.6.0
+
+      # 1. Cleaner way to get changed files using a specialized Action
+      - name: Get list of changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          # Only include .yaml or .yml files
+          # Exclude anything in the .github folder
+          files: |
+            **.yaml
+            **.yml
+            !.github/**
+
+      # 2. Run Super-Linter v8.6.0
+      - name: Run Super-Linter
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: super-linter/super-linter@v8.6.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_CLOUDFORMATION: true
+          VALIDATE_YAML: true
+          VALIDATE_BASH: true
+          VALIDATE_GITHUB_ACTIONS: true
+
+      # 3. Deploy logic using the new clean variable
+      - name: Deploy and Log Status
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          # Define your target region
+          DEPLOY_REGION="us-east-1"
+          
+          # The action provides a space-separated list of files automatically
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            STACK_NAME=$(basename "$file" | sed 's/\.[^.]*$//')-stack
+            echo "🚀 Deploying $file as $STACK_NAME"
+
+            # Check status and handle ROLLBACK_COMPLETE
+            STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks.StackStatus' --output text 2>/dev/null || echo "NOT_FOUND")
+
+            if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
+              aws cloudformation delete-stack --stack-name "$STACK_NAME"
+              aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME"
+            fi
+
+            aws cloudformation deploy \
+              --template-file "$file" \
+              --stack-name "$STACK_NAME" \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --no-fail-on-empty-changeset
+          done
+
+      - name: Send Slack Notification
+        if: always() && steps.changed-files.outputs.files != ''
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "CloudFormation Deployment Status: ${{ job.status }}\nRepo: ${{ github.repository }}\nWorkflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
