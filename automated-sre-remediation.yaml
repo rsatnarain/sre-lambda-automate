@@ -1,0 +1,164 @@
+# Name: SRE Automated Remediation
+# Author: Rob Satnarain
+# Description: Designed to close all port 22s that are manually opened in AWS Console. 
+# Creation Date: 2026-04-23
+
+# Update Date   Updated By     Version   Description
+# -----------  ------------   -------   ---------------------------------------------
+# 2026-04-23   Rob Satnarain  1.0       Initial creation of the SRE Automated Remediation playbook.
+#
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "SRE Automated Remediation Playbook - Closes all port 22 rules are manually created in AWS Console."
+
+Resources:
+    # 1. Base Network (VPC, Subnet, IGW)
+  RemediationVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+        CidrBlock: "10.0.0.0/16"
+        EnableDnsHostnames: true
+        EnableDnsSupport: true
+        MapPublicIpOnLaunch: true
+        Tags:
+            - Key: Name
+              Value: SRE-Automated-Remediation-VPC
+
+  RemediationSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+        VpcId: !Ref RemediationVPC
+        CidrBlock: "10.0.1.0/24"
+        Tags:
+            - Key: Name
+              Value: SRE-Automated-Remediation-Subnet
+
+  RemediationIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+        Tags:
+            - Key: Name
+              Value: SRE-Automated-Remediation-IGW
+
+  RemediationVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+        VpcId: !Ref RemediationVPC
+        InternetGatewayId: !Ref RemediationIGW
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+        VpcId: !Ref RemediationVPC
+        Tags:
+            - Key: Name
+              Value: SRE-Automated-Remediation-Public-Route-Table
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: RemediationVPCGatewayAttachment
+    Properties:
+        RouteTableId: !Ref PublicRouteTable
+        DestinationCidrBlock: "0.0.0.0/0"
+        GatewayId: !Ref RemediationIGW
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+        SubnetId: !Ref RemediationSubnet
+        RouteTableId: !Ref PublicRouteTable
+  
+  # 2. Target Security Group (Test Group)
+  TargetSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: "Target Security Group for SRE Automated Remediation"
+        VpcId: !Ref RemediationVPC
+        SecurityGroupIngress:
+            - IpProtocol: tcp
+              FromPort: 22
+              ToPort: 22
+              CidrIp: "0.0.0.0/0"
+  
+  #3. IAM Role for Lambda Function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+        AssumeRolePolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+                - Effect: Allow
+                  Principal:
+                      Service: lambda.amazonaws.com
+                  Action: sts:AssumeRole
+        ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+            - PolicyName: EC2SREAutomatedRemediationPolicy
+              PolicyDocument:
+                  Version: "2012-10-17"
+                  Statement:
+                      - Effect: Allow
+                        Action:
+                            - ec2:DescribeSecurityGroups
+                            - ec2:RevokeSecurityGroupIngress
+                        Resource: "*"
+  
+  # 4. Lambda Function for Automated Remediation
+  SREAutomatedRemediationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: SREAutomatedRemediationFunction
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 10
+      Code:
+        ZipFile: |
+          import boto3, json, logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          def lambda_handler(event, context):
+              ec2 = boto3.client('ec2')
+              try:
+                  detail = event.get('detail', {})
+                  params = detail.get('requestParameters', {})
+                  sg_id = params.get('groupId')
+                  items = params.get('ipPermissions', {}).get('items', [])
+                  for p in items:
+                      if p.get('fromPort') == 22:
+                          for r in p.get('ipRanges', {}).get('items', []):
+                              if r.get('cidrIp') == '0.0.0.0/0':
+                                  logger.info(f"Reverting {sg_id}")
+                                  ec2.revoke_security_group_ingress(GroupId=sg_id, IpPermissions=[p])
+              except Exception as e:
+                  logger.error(e)
+                  
+  # 5. EventBridge Rule to Trigger Lambda on Security Group Changes
+  SecurityGroupChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Trigger Lambda function on Security Group Ingress changes"
+      Name: SREAutomatedRemediationRule
+      EventPattern:
+        source:
+          - "aws.ec2"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "ec2.amazonaws.com"
+          eventName:
+            - "AuthorizeSecurityGroupIngress"
+      State: "ENABLED"      
+      Targets:
+        - Arn: !GetAtt SREAutomatedRemediationFunction.Arn
+          Id: "SREAutomatedRemediationFunctionTarget"
+  
+  # 6. Permissions for EventBridge to Invoke Lambda
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SREAutomatedRemediationFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt SecurityGroupChangeRule.Arn
