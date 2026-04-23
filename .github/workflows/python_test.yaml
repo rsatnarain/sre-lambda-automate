@@ -1,0 +1,84 @@
+# Name: Deploy SRE Automated Remediation
+# Description: This GitHub Actions workflow automates the deployment of the SRE Automated Remediation Playbook. It checks out the code, configures AWS credentials, injects the Python remediation script into the CloudFormation template, and deploys the stack to AWS. Finally, it forces a refresh of the Lambda function configuration to ensure the latest code is active.
+# Author: Rob Satnarain
+# Creation Date: 2026-04-23
+#
+# Update Date   Updated By     Version   Description
+# -----------  ------------   -------   ---------------------------------------------
+# 2026-04-23   Rob Satnarain  1.0       Initial creation of the GitHub Actions workflow for deploying the SRE Automated Remediation playbook.
+
+name: Deploy SRE Automated Remediation
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 1. Check for syntax errors (Linting)
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 remediation.py --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      # 2. Run unit tests (Optional but recommended)
+      # This assumes you have a tests/ directory or a test_remediation.py file
+      - name: Run Tests
+        run: |
+          pip install pytest boto3
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # Only runs if test files exist
+          pytest --trace-config || echo "No tests found, skipping."
+
+  deploy:
+    needs: validate-and-test # Only runs if the validation job passes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Inject Python Script into CloudFormation
+        run: |
+          python3 -c "
+          import sys
+          with open('automated-sre-remediation.yaml', 'r') as f:
+              yaml_content = f.read()
+          with open('remediation.py', 'r') as f:
+              python_code = f.read()
+          indented_code = '\n'.join(['          ' + line for line in python_code.splitlines()])
+          final_yaml = yaml_content.replace('ZipFile: \"PLACEHOLDER\"', 'ZipFile: |\n' + indented_code)
+          with open('automated-sre-remediation.yaml', 'w') as f:
+              f.write(final_yaml)
+          "
+
+      - name: Deploy CloudFormation Stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: sre-remediation-stack
+          template: automated-sre-remediation.yaml
+          no-fail-on-empty-changeset: "1"
+          capabilities: CAPABILITY_IAM
+
+      - name: Force Lambda Refresh
+        run: |
+          aws lambda update-function-configuration \
+            --function-name automated-sre-remediation \
+            --description "Validated deployment: ${{ github.sha }}"

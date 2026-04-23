@@ -107,31 +107,13 @@ Resources:
   SREAutomatedRemediationFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: SREAutomatedRemediationFunction
-      Handler: index.lambda_handler
+      FunctionName: automated-sre-remediation
+      Handler: remediation.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.9
+      Runtime: python3.11
       Timeout: 10
       Code:
-        ZipFile: |
-          import boto3, json, logging
-          logger = logging.getLogger()
-          logger.setLevel(logging.INFO)
-          def lambda_handler(event, context):
-              ec2 = boto3.client('ec2')
-              try:
-                  detail = event.get('detail', {})
-                  params = detail.get('requestParameters', {})
-                  sg_id = params.get('groupId')
-                  items = params.get('ipPermissions', {}).get('items', [])
-                  for p in items:
-                      if p.get('fromPort') == 22:
-                          for r in p.get('ipRanges', {}).get('items', []):
-                              if r.get('cidrIp') == '0.0.0.0/0':
-                                  logger.info(f"Reverting {sg_id}")
-                                  ec2.revoke_security_group_ingress(GroupId=sg_id, IpPermissions=[p])
-              except Exception as e:
-                  logger.error(e)
+        ZipFile: "PLACEHOLDER"
                   
   # 5. EventBridge Rule to Trigger Lambda on Security Group Changes
   SecurityGroupChangeRule:
