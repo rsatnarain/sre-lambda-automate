@@ -107,7 +107,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: automated-sre-remediation
-      Handler: remediation.lambda_handler
+      Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.11
       Timeout: 10
@@ -140,7 +140,7 @@ Resources:
               except Exception as e:
                   logger.error(f"Error during remediation: {str(e)}")
                   return {"status": "error", "message": str(e)}
-                             
+
   # 5. EventBridge Rule to Trigger Lambda on Security Group Changes
   SecurityGroupChangeRule:
     Type: AWS::Events::Rule
