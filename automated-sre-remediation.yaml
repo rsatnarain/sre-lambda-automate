@@ -6,7 +6,10 @@
 # Update Date   Updated By     Version   Description
 # -----------  ------------   -------   ---------------------------------------------
 # 2026-04-23   Rob Satnarain  1.0       Initial creation of the SRE Automated Remediation playbook.
+# 2026-04-24   Rob Satnarain  1.1       Added detailed comments and logging for better traceability. Updated lambda handler to index instead of remediation_handler for consistency with AWS Lambda naming conventions.
+# 2026-04-24.  Rob Satnarain  1.2       Updated python to use Pascal Case for revoke_parameters to match Boto3 expectations. Added error handling in the Lambda function to catch and log any exceptions during the remediation process.
 #
+
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "SRE Automated Remediation Playbook - Closes all port 22 rules are manually created in AWS Console."
 
@@ -114,32 +117,55 @@ Resources:
       Code:
         ZipFile: |
           import boto3
+          import json
           import logging
 
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
-          ec2 = boto3.client('ec2')
 
           def lambda_handler(event, context):
-              # Extract Security Group ID from the EventBridge event
+              ec2 = boto3.client('ec2')
+              
               try:
-                  group_id = event['detail']['requestParameters']['groupId']
-                  ip_permissions = event['detail']['requestParameters']['ipPermissions']['items']
+                  detail = event.get('detail', {})
+                  params = detail.get('requestParameters', {})
+                  sg_id = params.get('groupId')
                   
-                  for item in ip_permissions:
-                      if item.get('fromPort') == 22 or item.get('toPort') == 22:
-                          logger.info(f"Detected port 22 opening on {group_id}. Remediating...")
+                  # CloudTrail wraps the list in 'items'
+                  permissions_list = params.get('ipPermissions', {}).get('items', [])
+                  
+                  for p in permissions_list:
+                      from_port = p.get('fromPort')
+                      ip_protocol = p.get('ipProtocol', 'tcp')
+                      to_port = p.get('toPort')
+                      
+                      # Safely handle the integer conversion we talked about earlier
+                      if int(from_port or 0) == 22:
                           
-                          ec2.revoke_security_group_ingress(
-                              GroupId=group_id,
-                              IpPermissions=[item]
-                          )
-                          logger.info(f"Successfully closed port 22 on {group_id}")
-                          
-                  return {"status": "success", "remediated_group": group_id}
+                          ranges = p.get('ipRanges', {}).get('items', [])
+                          for r in ranges:
+                              cidr_ip = r.get('cidrIp')
+                              
+                              if cidr_ip == '0.0.0.0/0':
+                                  logger.info(f"VIOLATION DETECTED: Port 22 open to 0.0.0.0/0 on SG {sg_id}. Reverting...")
+                                  
+                                  # --- THE FIX ---
+                                  # We must map the camelCase CloudTrail data to PascalCase Boto3 parameters
+                                  revoke_params = {
+                                      'IpProtocol': ip_protocol,
+                                      'FromPort': int(from_port),
+                                      'ToPort': int(to_port),
+                                      'IpRanges': [{'CidrIp': cidr_ip}]
+                                  }
+                                  
+                                  ec2.revoke_security_group_ingress(
+                                      GroupId=sg_id,
+                                      IpPermissions=[revoke_params]
+                                  )
+                                  logger.info(f"Successfully revoked unauthorized rule from {sg_id}")
+
               except Exception as e:
-                  logger.error(f"Error during remediation: {str(e)}")
-                  return {"status": "error", "message": str(e)}
+                  logger.error(f"Error during remediation: {e}")
 
   # 5. EventBridge Rule to Trigger Lambda on Security Group Changes
   SecurityGroupChangeRule:
