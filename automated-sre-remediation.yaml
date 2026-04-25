@@ -139,7 +139,7 @@ Resources:
                       ip_protocol = p.get('ipProtocol', 'tcp')
                       to_port = p.get('toPort')
                       
-                      # Safely handle the integer conversion we talked about earlier
+                      # Safely handle the integer conversion
                       if int(from_port or 0) == 22:
                           
                           ranges = p.get('ipRanges', {}).get('items', [])
@@ -150,7 +150,7 @@ Resources:
                                   logger.info(f"VIOLATION DETECTED: Port 22 open to 0.0.0.0/0 on SG {sg_id}. Reverting...")
                                   
                                   # --- THE FIX ---
-                                  # We must map the camelCase CloudTrail data to PascalCase Boto3 parameters
+                                  # Must map the camelCase CloudTrail data to PascalCase Boto3 parameters
                                   revoke_params = {
                                       'IpProtocol': ip_protocol,
                                       'FromPort': int(from_port),
