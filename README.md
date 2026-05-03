@@ -47,6 +47,7 @@ aws cloudformation deploy \
   --template-file automated-sre-remediation.yaml \
   --stack-name sre-remediation-stack \
   --capabilities CAPABILITY_IAM
+```
 
 Wait for the terminal to output `Successfully created/updated stack - sre-port22-remediation-stack`. ![Cloud Formation Stack Completed](Screenshots/CloudFormation%20Stack%20Complete.png)
 
@@ -71,3 +72,4 @@ To remove the resources from your AWS account:
 ```bash
 aws cloudformation delete-stack \
   --stack-name sre-port22-remediation-stack
+  ```
