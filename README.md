@@ -49,7 +49,7 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_IAM
 ```
 
-Wait for the terminal to output `Successfully created/updated stack - sre-port22-remediation-stack`. ![Cloud Formation Stack Completed](Screenshots/CloudFormation%20Stack%20Complete.png)
+Wait for the terminal to output `Successfully created/updated stack - sre-remediation-stack`. ![Cloud Formation Stack Completed](Screenshots/CloudFormation%20Stack%20Complete.png)
 
 ### Step 3: Test the Automation
 1. Go to the **EC2 Dashboard** in the AWS Console.
