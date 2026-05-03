@@ -49,7 +49,8 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_IAM
 ```
 
-Wait for the terminal to output `Successfully created/updated stack - sre-remediation-stack`. ![Cloud Formation Stack Completed](Screenshots/CloudFormation%20Stack%20Complete.png)
+Wait for the terminal to output `Successfully created/updated stack - sre-remediation-stack`. 
+     ![Cloud Formation Stack Completed](Screenshots/CloudFormation%20Stack%20Complete.png)
 
 ### Step 3: Test the Automation
 1. Go to the **EC2 Dashboard** in the AWS Console.
@@ -60,11 +61,14 @@ Wait for the terminal to output `Successfully created/updated stack - sre-remedi
    * **Source:** Custom -> `0.0.0.0/0`
 4. Click **Save rules**.
 5. Wait about 5 to 10 seconds, and refresh the page. The rule will automatically disappear.
+![Manually Add Inbound SSH Rule](Screenshots/Manually%20add%20ssh%20inbound%20rule.png)
+![Inbound Rule Removed](Screenshots/Inbound%20Rule%20Violation%20Removed.png)
 
 ### Step 4: Check Observability (Logs)
 1. Go to the **CloudWatch Dashboard**.
 2. Click on **Log groups** and search for `/aws/lambda/SREAutomatedRemediationFunction`.
 3. Open the latest log stream. You will see: `VIOLATION DETECTED: Port 22 open to 0.0.0.0/0` followed by a success message.
+![CloudWatch Logs](Screenshots/CloudWatch%20Logs.png)
 
 ### Step 5: Clean Up
 To remove the resources from your AWS account:
