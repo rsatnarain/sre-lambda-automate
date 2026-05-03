@@ -48,25 +48,24 @@ aws cloudformation deploy \
   --stack-name sre-remediation-stack \
   --capabilities CAPABILITY_IAM
 
-Wait for the terminal to output Successfully created/updated stack - sre-port22-remediation-stack. 
-*(See screenshot: CloudFormation Stack Complete.jpg)*
+Wait for the terminal to output `Successfully created/updated stack - sre-port22-remediation-stack`. ![Cloud Formation Stack Completed](Screenshots/CloudFormation%20Stack%20Complete.png)
 
-Step 3: Test the Automation
-1. Go to the EC2 Dashboard in the AWS Console.
-2. Navigate to Security Groups and find the one named TargetSecurityGroup.
-3. Select it, click Edit inbound rules, and add a new rule:
-     - Type: SSH
-     - Port Range: 22
-     - Source: Custom -> 0.0.0.0/0
-4. Click Save rules.
+### Step 3: Test the Automation
+1. Go to the **EC2 Dashboard** in the AWS Console.
+2. Navigate to **Security Groups** and find the one named `TargetSecurityGroup`.
+3. Select it, click **Edit inbound rules**, and add a new rule:
+   * **Type:** SSH
+   * **Port Range:** 22
+   * **Source:** Custom -> `0.0.0.0/0`
+4. Click **Save rules**.
 5. Wait about 5 to 10 seconds, and refresh the page. The rule will automatically disappear.
 
-Step 4: Check Observability (Logs)
-1. Go to the CloudWatch Dashboard.
-2. Click on Log groups and search for /aws/lambda/SREAutomatedRemediationFunction.
-3. Open the latest log stream. *You will see: VIOLATION DETECTED: Port 22 open to 0.0.0.0/0* followed by a success message.
+### Step 4: Check Observability (Logs)
+1. Go to the **CloudWatch Dashboard**.
+2. Click on **Log groups** and search for `/aws/lambda/SREAutomatedRemediationFunction`.
+3. Open the latest log stream. You will see: `VIOLATION DETECTED: Port 22 open to 0.0.0.0/0` followed by a success message.
 
-Step 5: Clean Up
+### Step 5: Clean Up
 To remove the resources from your AWS account:
 
 ```bash
