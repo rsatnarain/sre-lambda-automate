@@ -71,5 +71,5 @@ To remove the resources from your AWS account:
 
 ```bash
 aws cloudformation delete-stack \
-  --stack-name sre-port22-remediation-stack
+  --stack-name sre-remediation-stack
   ```
