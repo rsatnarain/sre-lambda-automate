@@ -14,7 +14,7 @@ Instead of relying on slow periodic polling, this solution uses **AWS CloudTrail
 
 Watch the full demonstration and technical deep-dive on Loom:
 
-> **[▶️ Watch the SRE Automation Loom Video Here](#)** *(Replace `#` with your actual Loom link)*
+> **[▶️ Watch the SRE Automation Loom Video Here](#)** 
 
 ---
 
@@ -49,6 +49,7 @@ aws cloudformation deploy \
 ```
 
 Wait for the terminal to output `Successfully created/updated stack - sre-remediation-stack`. 
+
      ![Cloud Formation Stack Completed](Screenshots/Cloud%20Formation%20Stack%20Complete.png)
 
 ### Step 3: Test the Automation
