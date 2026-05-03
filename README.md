@@ -2,7 +2,6 @@
 
 [![AWS](https://img.shields.io/badge/AWS-CloudFormation-orange.svg)](https://aws.amazon.com/cloudformation/)
 [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 ## 🎯 Overview
 As Site Reliability Engineers (SREs), minimizing Mean Time To Resolution (MTTR) and reducing manual toil is critical. This project provides an **event-driven, serverless automation playbook** designed to instantly detect and remediate one of the most common cloud security risks: accidentally (or maliciously) leaving SSH Port 22 open to the public (`0.0.0.0/0`).
