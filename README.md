@@ -14,7 +14,7 @@ Instead of relying on slow periodic polling, this solution uses **AWS CloudTrail
 
 Watch the full demonstration and technical deep-dive on Loom:
 
-> **[▶️ Watch the SRE Automation Loom Video Here](#)** 
+> **[▶️ Watch the SRE Automation Loom Video Here](https://www.loom.com/share/70e233655a404ae48606f3016fe9f34d)** 
 
 ---
 
