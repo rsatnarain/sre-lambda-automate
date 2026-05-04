@@ -62,6 +62,10 @@ Wait for the terminal to output `Successfully created/updated stack - sre-remedi
 4. Click **Save rules**.
 5. Wait about 5 to 10 seconds, and refresh the page. The rule will automatically disappear.
 ![Manually Add Inbound SSH Rule](Screenshots/Manually%20add%20ssh%20inbound%20rule.png)
+![Lambda Execution 1](Screenshots/Lamba%20Function%20Execution%201.png)
+![Lambda Execution 1](Screenshots/Lamba%20Function%20Execution%202.png)
+![Cloud Watch Logs](Screenshots/CloudWatch%20Logs.jpg)
+![Lambda Execution 3](Screenshots/Lambda%20Execution%203%20Logs.png)
 ![Inbound Rule Removed](Screenshots/Inbound%20Rule%20Violation%20Removed.png)
 
 ### Step 4: Check Observability (Logs)

@@ -149,7 +149,7 @@ Resources:
                               if cidr_ip == '0.0.0.0/0':
                                   logger.info(f"VIOLATION DETECTED: Port 22 open to 0.0.0.0/0 on SG {sg_id}. Reverting...")
                                   
-                                  # --- THE FIX ---
+                                  # --- FIX ---
                                   # Must map the camelCase CloudTrail data to PascalCase Boto3 parameters
                                   revoke_params = {
                                       'IpProtocol': ip_protocol,
